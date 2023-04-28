@@ -17,3 +17,4 @@ ansible_puller
 
 # Eclipse project file
 .project
+.idea
