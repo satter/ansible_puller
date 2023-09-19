@@ -92,6 +92,12 @@ func extractTgz(src, dest string) error {
 			}
 
 			outFile.Close()
+
+    case tar.TypeSymlink:
+      err := os.Symlink(header.Linkname, targetPath)
+      if err != nil {
+        return errors.Wrap(err, "unable to create symlink from tar")
+      }
 		}
 	}
 }
