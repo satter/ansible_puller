@@ -219,3 +219,15 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadBasicAuthFailure() {
 	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename)
 	assert.NotNil(s.T(), err)
 }
+
+func (s *HttpDownloaderTestSuite) TestIdempotentDownloadFailureFromInvalidURL() {
+	downloader := httpDownloader{}
+	err := idempotentFileDownload(downloader, "http://192.168.0.%31/invalid-url", testFilename)
+	assert.NotNil(s.T(), err)
+}
+
+func (s *HttpDownloaderTestSuite) TestIdempotentDownloadFailureFromUnresponsiveServer() {
+	downloader := httpDownloader{}
+	err := idempotentFileDownload(downloader, "http://0.0.0.0/unresponsive/"+testFilename, testFilename)
+	assert.NotNil(s.T(), err)
+}

@@ -31,7 +31,11 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 		Timeout: 15 * time.Second,
 	}
 
-	req, _ := http.NewRequest("GET", remotePath, nil)
+	req, err := http.NewRequest("GET", remotePath, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
@@ -41,7 +45,7 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return errors.New(fmt.Sprintf("bad status code: %v", resp.StatusCode))
+		return fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
 	// Persist to file in 32K chunks, instead of slurping
@@ -63,14 +67,27 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	client := http.Client{
 		Timeout: timeout,
 	}
-	req, _ := http.NewRequest("GET", hashRemotePath, nil)
+	req, err := http.NewRequest("GET", hashRemotePath, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create request")
+	}
+
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
+		return "", errors.Wrap(err, "failed to get remote md5sum")
+	}
+	// Ignore the checksum if it's not found, as assumed by the caller of this function.
+	if resp.StatusCode == http.StatusNotFound {
 		logrus.Debugf("MD5 sum not found at: %s", hashRemotePath)
+		return "", nil
+	}
+	// A non-2xx status code does not cause an error, so we handle it here. https://pkg.go.dev/net/http#Client.Do
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
 	logrus.Debugf("Found MD5 sum at: %s", hashRemotePath)
@@ -78,7 +95,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	remoteChecksum, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logrus.Debug("Error reading remote checksum")
-		return "", err
+		return "", errors.Wrap(err, "failed to read remote md5sum")
 	}
 
 	return string(remoteChecksum), nil
