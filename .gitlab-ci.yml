@@ -1,0 +1,39 @@
+variables:
+  BAZELISK_VERSION: 1.18.0
+
+default:
+  image: docker-hub.qbrains.tech/repository/docker_builders/qb_ubuntu22_golang:main
+  before_script:
+    - curl --location --output ./bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v{$BAZELISK_VERSION}/bazelisk-linux-amd64
+    - chmod +x ./bazelisk
+  tags:
+    - docker
+
+stages:
+  - test
+  - build
+#  - deploy
+
+testing:
+  stage: test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - ./bazelisk test //...
+
+compiling:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - ./bazelisk --output_base ./.tmp/ build //:ansible_puller_deb
+  artifacts:
+    paths:
+      - .tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb
+    expire_in: 1 month
+
+#deploy:
+#  stage: deploy
+#  rules:
+#    - when: manual
+#  script: echo "Define your deployment script!"
