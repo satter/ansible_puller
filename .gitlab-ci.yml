@@ -12,7 +12,7 @@ default:
 stages:
   - test
   - build
-#  - deploy
+  - upload
 
 testing:
   stage: test
@@ -32,8 +32,16 @@ compiling:
       - .tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb
     expire_in: 1 month
 
-#deploy:
-#  stage: deploy
-#  rules:
-#    - when: manual
-#  script: echo "Define your deployment script!"
+uploading:
+  stage: upload
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "master" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual
+  script:
+    - ./bazelisk --output_base ./.tmp/ build //:ansible_puller_deb
+    - >
+      curl 
+      --user "$NEXUS_USER:$NEXUS_PASSWORD" 
+      --header "Content-Type: multipart/form-data" 
+      --data-binary "@.tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb" 
+      "http://repo.qbrains.tech/repository/Ubuntu_2004/"
