@@ -44,4 +44,16 @@ uploading:
       --user "$NEXUS_USER:$NEXUS_PASSWORD" 
       --header "Content-Type: multipart/form-data" 
       --data-binary "@.tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb" 
-      "http://repo.qbrains.tech/repository/Ubuntu_2004/"
+      "https://repo.qbrains.tech/repository/Ubuntu_1804/"
+    - >
+      curl 
+      --user "$NEXUS_USER:$NEXUS_PASSWORD" 
+      --header "Content-Type: multipart/form-data" 
+      --data-binary "@.tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb" 
+      "https://repo.qbrains.tech/repository/Ubuntu_2004/"
+    - >
+      curl 
+      --user "$NEXUS_USER:$NEXUS_PASSWORD" 
+      --header "Content-Type: multipart/form-data" 
+      --data-binary "@.tmp/execroot/__main__/bazel-out/k8-fastbuild/bin/ansible-puller.deb" 
+      "https://repo.qbrains.tech/repository/Ubuntu_2204/"
