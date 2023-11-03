@@ -74,6 +74,7 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |
 | `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |
 | `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |
+| `cron-schedule`          | `""`                                  | A Cron-like schedule to trigger run events instead of a sleep timer                     |
 | `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |
 | `s3-arn`                 | `""`                                  | S3 location to find the Ansible tarball. Required if http-url is not set                |
 | `s3-conn-region`         | `""`                                  | S3 connection region to use. Uses the aws-sdk-go-v2 default providers if not set        |

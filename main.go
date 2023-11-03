@@ -14,6 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/go-co-op/gocron"
+
 )
 
 var (
@@ -106,6 +108,7 @@ func init() {
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
+	pflag.String("cron-schedule", "", "Cron-like schedule to use instead of sleep interval. When set, disables the sleep timer")
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -299,8 +302,10 @@ func main() {
 
 	period := time.Duration(viper.GetInt("sleep")) * time.Minute
 	jitter := time.Duration(viper.GetInt("sleep-jitter")) * time.Minute
+        schedule := viper.GetString("cron-schedule")
+	rng := rand.New(rand.NewSource(time.Now().Unix()))
 
-	if jitter >= period {
+	if jitter >= period && schedule != "" {
 		logrus.Fatalf("sleep-jitter is too large, it must be less than the 'sleep' period %d", viper.GetInt("sleep"))
 	}
 
@@ -313,24 +318,48 @@ func main() {
 		}
 	}
 
-	go func() {
+	runOnceScheduled := func() {
+		if jitter != 0 {
+			// Sleep for a random duration in [0, jitter].
+			sleep_duration := time.Duration(rng.Int63n(int64(jitter)))
+			logrus.Infoln(fmt.Sprintf("Ansible run triggered by schedule. Randomized delay added: %s", sleep_duration))
+			time.Sleep(sleep_duration)
+		} else {
+			logrus.Infoln("Ansible run triggered by schedule. Randomized delay not used.")
+		}
 		runOnce()
-		if jitter == 0 {
-			for range time.Tick(period) {
+	}
+
+	go func() {
+		if schedule == "" {
+			runOnce()
+			if jitter == 0 {
+				for range time.Tick(period) {
+					runOnce()
+				}
+				return
+			}
+			for {
+				// Sleep for a random duration in [period - jitter, period + jitter).
+				time.Sleep(period - jitter + time.Duration(rng.Int63n(2*int64(jitter))))
 				runOnce()
 			}
-			return
-		}
-		rng := rand.New(rand.NewSource(time.Now().Unix()))
-		for {
-			// Sleep for a random duration in [period - jitter, period + jitter).
-			time.Sleep(period - jitter + time.Duration(rng.Int63n(2*int64(jitter))))
-			runOnce()
+		} else {
+			s := gocron.NewScheduler(time.UTC)
+			_, err := s.Cron(schedule).Do(runOnceScheduled)
+			if err != nil {
+				logrus.Fatalf("Failed to schedule Ansible run job: %s", err)
+			}
+			s.StartBlocking()
 		}
 	}()
 
 	go func() {
-		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes (with %d mintues jitter) apart.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
+		if schedule == "" {
+			logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes (with %d minutes jitter) apart.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
+		} else {
+			logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs on cron-like schedule %s with %d minutes jitter", schedule, viper.GetInt("sleep-jitter")))
+		}
 		for range runChan {
 			start := time.Now()
 			err := ansibleRun()
@@ -348,6 +377,6 @@ func main() {
 	}()
 
 	srv := NewServer(runOnce)
-	logrus.Infoln("Starting server on " + viper.GetString("http-listen-string"))
+	logrus.Infoln(fmt.Sprintf("Starting %s server on %s version %s", appName, viper.GetString("http-listen-string"), Version))
 	logrus.Fatal(srv.ListenAndServe())
 }

@@ -49,6 +49,7 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_config//:config",
         "@com_github_aws_aws_sdk_go_v2_feature_s3_manager//:manager",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
+        "@com_github_go_co_op_gocron//:go_default_library",
         "@com_github_gorilla_mux//:mux",
         "@com_github_pkg_errors//:errors",
         "@com_github_prometheus_client_golang//prometheus",
@@ -88,7 +89,7 @@ go_test(
 # Packaging Constants
 #
 
-VERSION = "1"
+VERSION = "1.1.0"
 
 RELEASE = "0"
 
@@ -103,6 +104,7 @@ go_binary(
     basename = "ansible-puller",
     embed = [":ansible_puller_lib"],
     visibility = ["//visibility:public"],
+    gc_linkopts = ["-X", "main.Version=" + VERSION],
 )
 
 pkg_tar(
